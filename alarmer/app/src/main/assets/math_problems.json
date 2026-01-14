@@ -1,0 +1,12 @@
+[
+  {"problem": "22 + 5", "answer": "27"},
+  {"problem": "112 + 54", "answer": "166"},
+  {"problem": "15 * 3", "answer": "45"},
+  {"problem": "88 - 19", "answer": "69"},
+  {"problem": "125 / 5", "answer": "25"},
+  {"problem": "13 + 29", "answer": "42"},
+  {"problem": "45 + 55", "answer": "100"},
+  {"problem": "9 * 7", "answer": "63"},
+  {"problem": "150 - 75", "answer": "75"},
+  {"problem": "64 / 8", "answer": "8"}
+]
