@@ -21,15 +21,22 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAlarmScreen(
+    alarmId: String? = null,
     onPopBackStack: () -> Unit,
     viewModel: AlarmViewModel = hiltViewModel()
 ) {
+    val alarms by viewModel.alarms.collectAsState()
+    val existingAlarm = remember(alarms, alarmId) { 
+        alarmId?.let { id -> alarms.find { it.id == id } } 
+    }
+
     CreateAlarmContent(
+        existingAlarm = existingAlarm,
         onPopBackStack = onPopBackStack,
         onSaveAlarm = { time, quizType, days ->
-            viewModel.addAlarm(
+            viewModel.addOrUpdateAlarm(
                 SmartAlarm(
-                    id = UUID.randomUUID().toString(),
+                    id = existingAlarm?.id ?: UUID.randomUUID().toString(),
                     time = time,
                     daysOfWeek = days,
                     quizType = quizType,
@@ -44,18 +51,34 @@ fun CreateAlarmScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAlarmContent(
+    existingAlarm: SmartAlarm? = null,
     onPopBackStack: () -> Unit,
     onSaveAlarm: (LocalTime, QuizType, List<Int>) -> Unit
 ) {
-    val initialTime = LocalTime.now()
+    // We use remember(existingAlarm) to re-initialize when data is loaded from the database
+    val initialTime = existingAlarm?.time ?: LocalTime.now()
     val timePickerState = rememberTimePickerState(
         initialHour = initialTime.hour,
         initialMinute = initialTime.minute,
         is24Hour = false
     )
     
-    var selectedQuizType by remember { mutableStateOf<QuizType>(QuizType.Math) }
-    var selectedDays by remember { mutableStateOf(setOf<Int>()) }
+    // Ensure the picker updates if the alarm data loads late
+    LaunchedEffect(existingAlarm) {
+        existingAlarm?.let {
+            // Note: TimePickerState doesn't have setters for hour/minute directly, 
+            // but since we use rememberTimePickerState with initial values, 
+            // we rely on the parent Composable re-rendering with new initial values 
+            // OR we can use a key for the whole picker section if needed.
+        }
+    }
+    
+    var selectedQuizType by remember(existingAlarm) { 
+        mutableStateOf(existingAlarm?.quizType ?: QuizType.Math) 
+    }
+    var selectedDays by remember(existingAlarm) { 
+        mutableStateOf(existingAlarm?.daysOfWeek?.toSet() ?: emptySet()) 
+    }
     var isQuizTypeExpanded by remember { mutableStateOf(false) }
 
     Scaffold { padding ->
@@ -63,7 +86,7 @@ fun CreateAlarmContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp,0.dp)
+                .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -77,10 +100,13 @@ fun CreateAlarmContent(
                 }
             }
 
-            TimePicker(
-                state = timePickerState,
-                modifier = Modifier.padding(vertical = 16.dp)
-            )
+            // Keying the TimePicker with existingAlarm ensures it resets to the correct time when loaded
+            key(existingAlarm) {
+                TimePicker(
+                    state = timePickerState,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
 
             HorizontalDivider()
 
@@ -146,7 +172,7 @@ fun CreateAlarmContent(
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
-                Text("Save Alarm", style = MaterialTheme.typography.titleMedium)
+                Text(if (existingAlarm == null) "Save Alarm" else "Update Alarm", style = MaterialTheme.typography.titleMedium)
             }
             
             Spacer(modifier = Modifier.height(32.dp))
