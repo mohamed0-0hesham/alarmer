@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -50,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
 data class BottomNavItem(val screen: Screen, val icon: ImageVector, val label: String)
 
+@Preview
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
