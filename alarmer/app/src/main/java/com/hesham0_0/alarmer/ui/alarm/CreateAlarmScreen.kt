@@ -17,6 +17,7 @@ import com.hesham0_0.alarmer.domain.model.SmartAlarm
 import com.hesham0_0.alarmer.ui.theme.AlarmerTheme
 import java.time.LocalTime
 import java.util.*
+import androidx.compose.runtime.collectAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,127 +56,116 @@ fun CreateAlarmContent(
     onPopBackStack: () -> Unit,
     onSaveAlarm: (LocalTime, QuizType, List<Int>) -> Unit
 ) {
-    // We use remember(existingAlarm) to re-initialize when data is loaded from the database
-    val initialTime = existingAlarm?.time ?: LocalTime.now()
-    val timePickerState = rememberTimePickerState(
-        initialHour = initialTime.hour,
-        initialMinute = initialTime.minute,
-        is24Hour = false
-    )
-    
-    // Ensure the picker updates if the alarm data loads late
-    LaunchedEffect(existingAlarm) {
-        existingAlarm?.let {
-            // Note: TimePickerState doesn't have setters for hour/minute directly, 
-            // but since we use rememberTimePickerState with initial values, 
-            // we rely on the parent Composable re-rendering with new initial values 
-            // OR we can use a key for the whole picker section if needed.
+    // Keying the TimePicker with existingAlarm ensures it resets to the correct time when loaded
+    key(existingAlarm) {
+        val initialTime = existingAlarm?.time ?: LocalTime.now()
+        val timePickerState = rememberTimePickerState(
+            initialHour = initialTime.hour,
+            initialMinute = initialTime.minute,
+            is24Hour = false
+        )
+        
+        var selectedQuizType by remember(existingAlarm) { 
+            mutableStateOf(existingAlarm?.quizType ?: QuizType.Math) 
         }
-    }
-    
-    var selectedQuizType by remember(existingAlarm) { 
-        mutableStateOf(existingAlarm?.quizType ?: QuizType.Math) 
-    }
-    var selectedDays by remember(existingAlarm) { 
-        mutableStateOf(existingAlarm?.daysOfWeek?.toSet() ?: emptySet()) 
-    }
-    var isQuizTypeExpanded by remember { mutableStateOf(false) }
+        var selectedDays by remember(existingAlarm) { 
+            mutableStateOf(existingAlarm?.daysOfWeek?.toSet() ?: emptySet()) 
+        }
+        var isQuizTypeExpanded by remember { mutableStateOf(false) }
 
-    Scaffold { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start
+        Scaffold { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                IconButton(onClick = onPopBackStack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    IconButton(onClick = onPopBackStack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
                 }
-            }
 
-            // Keying the TimePicker with existingAlarm ensures it resets to the correct time when loaded
-            key(existingAlarm) {
                 TimePicker(
                     state = timePickerState,
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
-            }
 
-            HorizontalDivider()
+                HorizontalDivider()
 
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text("Quiz Type", style = MaterialTheme.typography.labelLarge)
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = { isQuizTypeExpanded = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(selectedQuizType.javaClass.simpleName)
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text("Quiz Type", style = MaterialTheme.typography.labelLarge)
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { isQuizTypeExpanded = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(selectedQuizType.javaClass.simpleName)
+                        }
+                        DropdownMenu(
+                            expanded = isQuizTypeExpanded,
+                            onDismissRequest = { isQuizTypeExpanded = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            listOf(QuizType.Math, QuizType.Shapes, QuizType.Words, QuizType.None).forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type.javaClass.simpleName) },
+                                    onClick = {
+                                        selectedQuizType = type
+                                        isQuizTypeExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
-                    DropdownMenu(
-                        expanded = isQuizTypeExpanded,
-                        onDismissRequest = { isQuizTypeExpanded = false },
-                        modifier = Modifier.fillMaxWidth()
+                }
+
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text("Repeat on", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        listOf(QuizType.Math, QuizType.Shapes, QuizType.Words, QuizType.None).forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(type.javaClass.simpleName) },
+                        val days = listOf("M", "T", "W", "T", "F", "S", "S")
+                        days.forEachIndexed { index, day ->
+                            val dayNum = index + 1
+                            val isSelected = selectedDays.contains(dayNum)
+                            FilterChip(
+                                selected = isSelected,
                                 onClick = {
-                                    selectedQuizType = type
-                                    isQuizTypeExpanded = false
-                                }
+                                    selectedDays = if (isSelected) {
+                                        selectedDays - dayNum
+                                    } else {
+                                        selectedDays + dayNum
+                                    }
+                                },
+                                label = { Text(day) }
                             )
                         }
                     }
                 }
-            }
 
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text("Repeat on", style = MaterialTheme.typography.labelLarge)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    val days = listOf("M", "T", "W", "T", "F", "S", "S")
-                    days.forEachIndexed { index, day ->
-                        val dayNum = index + 1
-                        val isSelected = selectedDays.contains(dayNum)
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = {
-                                selectedDays = if (isSelected) {
-                                    selectedDays - dayNum
-                                } else {
-                                    selectedDays + dayNum
-                                }
-                            },
-                            label = { Text(day) }
+                Button(
+                    onClick = {
+                        onSaveAlarm(
+                            LocalTime.of(timePickerState.hour, timePickerState.minute),
+                            selectedQuizType,
+                            selectedDays.toList()
                         )
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                ) {
+                    Text(if (existingAlarm == null) "Save Alarm" else "Update Alarm", style = MaterialTheme.typography.titleMedium)
                 }
+                
+                Spacer(modifier = Modifier.height(32.dp))
             }
-
-            Button(
-                onClick = {
-                    onSaveAlarm(
-                        LocalTime.of(timePickerState.hour, timePickerState.minute),
-                        selectedQuizType,
-                        selectedDays.toList()
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) {
-                Text(if (existingAlarm == null) "Save Alarm" else "Update Alarm", style = MaterialTheme.typography.titleMedium)
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
