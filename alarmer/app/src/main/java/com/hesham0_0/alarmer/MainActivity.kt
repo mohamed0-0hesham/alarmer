@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,10 +25,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.hesham0_0.alarmer.ui.alarm.AlarmsScreen
 import com.hesham0_0.alarmer.ui.alarm.CreateAlarmScreen
 import com.hesham0_0.alarmer.ui.medicine.MedicineScreen
@@ -59,7 +62,7 @@ fun MainScreen() {
         BottomNavItem(Screen.Dashboard, Icons.Default.Home, "Home"),
         BottomNavItem(Screen.Alarms, Icons.Default.Notifications, "Alarms"),
         BottomNavItem(Screen.Medicine, Icons.Default.DateRange, "Meds"),
-        BottomNavItem(Screen.Tasks, Icons.Default.List, "Tasks")
+        BottomNavItem(Screen.Tasks, Icons.AutoMirrored.Filled.List, "Tasks")
     )
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
@@ -137,10 +140,21 @@ fun MainScreen() {
             ) {
                 composable(Screen.Dashboard.route) { DashboardScreen() }
                 composable(Screen.Alarms.route) { 
-                    AlarmsScreen(onNavigateToCreateAlarm = { navController.navigate(Screen.CreateAlarm.route) }) 
+                    AlarmsScreen(onNavigateToCreateAlarm = { alarmId ->
+                        val route = if (alarmId != null) "${Screen.CreateAlarm.route}?alarmId=$alarmId" else Screen.CreateAlarm.route
+                        navController.navigate(route)
+                    }) 
                 }
-                composable(Screen.CreateAlarm.route) { 
-                    CreateAlarmScreen(onPopBackStack = { navController.popBackStack() }) 
+                composable(
+                    route = "${Screen.CreateAlarm.route}?alarmId={alarmId}",
+                    arguments = listOf(navArgument("alarmId") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    })
+                ) { backStackEntry ->
+                    val alarmId = backStackEntry.arguments?.getString("alarmId")
+                    CreateAlarmScreen(alarmId = alarmId, onPopBackStack = { navController.popBackStack() }) 
                 }
                 composable(Screen.Medicine.route) { MedicineScreen() }
                 composable(Screen.Tasks.route) { TasksScreen() }
